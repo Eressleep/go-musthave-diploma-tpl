@@ -31,10 +31,9 @@ func New(s storage.Repository, a *auth.Manager, logger *zap.Logger) *Handlers {
 func (h *Handlers) Router() chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(chiMiddleware.RequestID)
-	r.Use(chiMiddleware.RealIP)
-	r.Use(chiMiddleware.Logger)
-	r.Use(chiMiddleware.Recoverer)
+	r.Use(middleware.RequestID(h.logger))
+	r.Use(middleware.Logging)
+	r.Use(middleware.Recovery)
 	r.Use(chiMiddleware.Timeout(30 * time.Second))
 
 	r.Post("/api/user/register", h.Register)

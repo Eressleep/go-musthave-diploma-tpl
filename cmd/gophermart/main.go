@@ -14,6 +14,7 @@ import (
 	"Eressleep/go-musthave-diploma-tpl/internal/auth"
 	"Eressleep/go-musthave-diploma-tpl/internal/config"
 	"Eressleep/go-musthave-diploma-tpl/internal/handlers"
+	"Eressleep/go-musthave-diploma-tpl/internal/middleware"
 	"Eressleep/go-musthave-diploma-tpl/internal/storage/postgres"
 
 	"go.uber.org/zap"
@@ -61,15 +62,23 @@ func run() error {
 	}
 
 	authMgr := auth.NewManager(cfg.JWTSecret)
+
 	h := handlers.New(repo, authMgr, logger)
 
-	accrualClient := accrual.NewClient(cfg.AccrualSystemAddress)
+	accrualClient := accrual.NewClient(
+		cfg.AccrualSystemAddress,
+		accrual.WithMaxFailures(5),
+		accrual.WithResetTimeout(30*time.Second),
+	)
+
 	worker := accrual.NewWorker(repo, accrualClient, logger)
 	go worker.Run(ctx)
 
+	rateLimiter := middleware.NewRateLimiter(100, time.Minute)
+
 	srv := &http.Server{
 		Addr:              cfg.RunAddress,
-		Handler:           h.Router(),
+		Handler:           rateLimiter.Middleware(h.Router()),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,

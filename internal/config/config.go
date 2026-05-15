@@ -134,11 +134,13 @@ func applyEnvValue(cfg *Config, key, value string) {
 
 func (c *Config) validate() error {
 	if c.DatabaseURI == "" {
-		return errors.New("database URI is required")
+		return errors.New("database URI is required (set DATABASE_URI or -d)")
 	}
+
 	if c.AccrualSystemAddress == "" {
-		return errors.New("accrual system address is required")
+		return errors.New("accrual system address is required (set ACCRUAL_SYSTEM_ADDRESS or -r)")
 	}
+
 	if _, err := url.Parse(c.AccrualSystemAddress); err != nil {
 		return fmt.Errorf("invalid accrual system address: %w", err)
 	}
