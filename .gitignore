@@ -1,23 +1,33 @@
-# Binaries for programs and plugins
+vendor/
+
+bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+gophermart
 
-# Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Binaries
-cmd/gophermart/main
-cmd/gophermart/gophermart
+go.work
 
-# Dependency directories (remove the comment below to include it)
-vendor/
+.env
+!.env.example
 
-# IDEs directories
-.idea
-.vscode
+configs/config.yaml
+
+*.log
+
+tmp/
+temp/
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+Thumbs.db

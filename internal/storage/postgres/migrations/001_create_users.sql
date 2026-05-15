@@ -1,0 +1,10 @@
+-- +migrate Up
+CREATE TABLE IF NOT EXISTS users (
+                                     id            BIGSERIAL PRIMARY KEY,
+                                     login         TEXT UNIQUE NOT NULL,
+                                     password_hash TEXT NOT NULL,
+                                     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+-- +migrate Down
+DROP TABLE IF EXISTS users;
