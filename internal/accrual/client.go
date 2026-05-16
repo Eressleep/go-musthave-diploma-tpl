@@ -49,21 +49,42 @@ type Client struct {
 	resetTimeout time.Duration
 }
 
-type ClientOption func(*Client)
+type ClientOption[T any] func(T) error
 
-func WithMaxFailures(n int64) ClientOption {
-	return func(c *Client) {
+func WithMaxFailures(n int64) ClientOption[*Client] {
+	return func(c *Client) error {
+		if n <= 0 {
+			return fmt.Errorf("maxFailures must be positive, got %d", n)
+		}
 		c.maxFailures = n
+		return nil
 	}
 }
 
-func WithResetTimeout(d time.Duration) ClientOption {
-	return func(c *Client) {
+func WithResetTimeout(d time.Duration) ClientOption[*Client] {
+	return func(c *Client) error {
+		if d <= 0 {
+			return fmt.Errorf("resetTimeout must be positive, got %v", d)
+		}
 		c.resetTimeout = d
+		return nil
 	}
 }
 
-func NewClient(baseURL string, opts ...ClientOption) *Client {
+func Apply[T any](o T, opts ...ClientOption[T]) error {
+	for _, opt := range opts {
+		if err := opt(o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewClient(baseURL string, opts ...ClientOption[*Client]) (*Client, error) {
+	if baseURL == "" {
+		return nil, errors.New("accrual: baseURL must not be empty")
+	}
+
 	c := &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
@@ -77,11 +98,11 @@ func NewClient(baseURL string, opts ...ClientOption) *Client {
 		resetTimeout: 30 * time.Second,
 	}
 
-	for _, opt := range opts {
-		opt(c)
+	if err := Apply(c, opts...); err != nil {
+		return nil, fmt.Errorf("apply options: %w", err)
 	}
 
-	return c
+	return c, nil
 }
 
 func (c *Client) GetOrder(ctx context.Context, number string) (*Response, error) {

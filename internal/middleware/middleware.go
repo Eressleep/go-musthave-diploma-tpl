@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"go.uber.org/zap"
@@ -31,7 +32,7 @@ func randomString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+		b[i] = letters[rand.IntN(len(letters))]
 	}
 	return string(b)
 }

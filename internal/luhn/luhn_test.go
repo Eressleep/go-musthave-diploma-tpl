@@ -113,7 +113,7 @@ func TestValid(t *testing.T) {
 func BenchmarkValid(b *testing.B) {
 	number := "49927398716"
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		Valid(number)
 	}
 }

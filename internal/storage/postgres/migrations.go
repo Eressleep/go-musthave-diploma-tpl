@@ -33,36 +33,44 @@ func (r *Repository) MigrateUp(ctx context.Context) error {
 	}
 
 	for _, m := range migrations {
-		var exists bool
-		err := r.pool.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE name = $1)`,
-			m.Name,
-		).Scan(&exists)
-
-		if err != nil || exists {
-			continue
+		if err := r.applyMigration(ctx, m); err != nil {
+			return err
 		}
+	}
 
-		tx, err := r.pool.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("begin tx: %w", err)
-		}
-		defer tx.Rollback(ctx)
+	return nil
+}
 
-		if _, err := tx.Exec(ctx, m.UpSQL); err != nil {
-			return fmt.Errorf("apply %s: %w", m.Name, err)
-		}
+func (r *Repository) applyMigration(ctx context.Context, m Migration) error {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE name = $1)`,
+		m.Name,
+	).Scan(&exists)
 
-		if _, err := tx.Exec(ctx,
-			`INSERT INTO schema_migrations (name) VALUES ($1)`,
-			m.Name,
-		); err != nil {
-			return fmt.Errorf("record %s: %w", m.Name, err)
-		}
+	if err != nil || exists {
+		return nil
+	}
 
-		if err := tx.Commit(ctx); err != nil {
-			return fmt.Errorf("commit %s: %w", m.Name, err)
-		}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, m.UpSQL); err != nil {
+		return fmt.Errorf("apply %s: %w", m.Name, err)
+	}
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO schema_migrations (name) VALUES ($1)`,
+		m.Name,
+	); err != nil {
+		return fmt.Errorf("record %s: %w", m.Name, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit %s: %w", m.Name, err)
 	}
 
 	return nil
@@ -111,6 +119,7 @@ func (r *Repository) MigrateDown(ctx context.Context) error {
 		if err := tx.Commit(ctx); err != nil {
 			return fmt.Errorf("commit %s: %w", m.Name, err)
 		}
+		break
 	}
 
 	return nil

@@ -65,11 +65,14 @@ func run() error {
 
 	h := handlers.New(repo, authMgr, logger)
 
-	accrualClient := accrual.NewClient(
+	accrualClient, err := accrual.NewClient(
 		cfg.AccrualSystemAddress,
 		accrual.WithMaxFailures(5),
 		accrual.WithResetTimeout(30*time.Second),
 	)
+	if err != nil {
+		return fmt.Errorf("create accrual client: %w", err)
+	}
 
 	worker := accrual.NewWorker(repo, accrualClient, logger)
 	go worker.Run(ctx)

@@ -84,7 +84,8 @@ func (r *Repository) PendingOrders(ctx context.Context, limit int) ([]domain.Ord
 		 FROM orders
 		 WHERE status IN ('NEW', 'PROCESSING')
 		 ORDER BY uploaded_at ASC
-		 LIMIT $1`,
+		 LIMIT $1
+		 FOR UPDATE SKIP LOCKED`,
 		limit,
 	)
 	if err != nil {
