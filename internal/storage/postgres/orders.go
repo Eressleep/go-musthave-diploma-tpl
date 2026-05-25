@@ -79,7 +79,13 @@ func (r *Repository) OrdersByUser(ctx context.Context, userID int64) ([]domain.O
 }
 
 func (r *Repository) PendingOrders(ctx context.Context, limit int) ([]domain.Order, error) {
-	rows, err := r.pool.Query(ctx,
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx,
 		`SELECT number, user_id, status, accrual, uploaded_at
 		 FROM orders
 		 WHERE status IN ('NEW', 'PROCESSING')
@@ -106,7 +112,15 @@ func (r *Repository) PendingOrders(ctx context.Context, limit int) ([]domain.Ord
 		orders = append(orders, o)
 	}
 
-	return orders, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return orders, nil
 }
 
 func (r *Repository) ApplyAccrual(
@@ -124,11 +138,17 @@ func (r *Repository) ApplyAccrual(
 	}()
 
 	var userID int64
+	var currentStatus string
 	if err := tx.QueryRow(ctx,
-		`SELECT user_id FROM orders WHERE number = $1 FOR UPDATE`,
+		`SELECT user_id, status FROM orders WHERE number = $1 FOR UPDATE`,
 		number,
-	).Scan(&userID); err != nil {
+	).Scan(&userID, &currentStatus); err != nil {
 		return fmt.Errorf("lock order: %w", err)
+	}
+
+	if currentStatus == string(domain.OrderStatusProcessed) ||
+		currentStatus == string(domain.OrderStatusInvalid) {
+		return nil
 	}
 
 	if accrual != nil {

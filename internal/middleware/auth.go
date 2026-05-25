@@ -2,8 +2,13 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
+)
+
+var (
+	ErrNoAuthHeader = errors.New("authorization header is missing or malformed")
 )
 
 var userIDKey = ctxKey{}
@@ -45,17 +50,17 @@ func AuthMiddleware(parser TokenParser) func(http.Handler) http.Handler {
 func extractToken(r *http.Request) (string, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
-		return "", http.ErrNoCookie
+		return "", ErrNoAuthHeader
 	}
 
 	const prefix = "Bearer "
 	if !strings.HasPrefix(auth, prefix) {
-		return "", http.ErrNoCookie
+		return "", ErrNoAuthHeader
 	}
 
 	token := strings.TrimSpace(strings.TrimPrefix(auth, prefix))
 	if token == "" {
-		return "", http.ErrNoCookie
+		return "", ErrNoAuthHeader
 	}
 
 	return token, nil
